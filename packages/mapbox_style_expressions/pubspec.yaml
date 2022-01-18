@@ -1,0 +1,14 @@
+name: mapbox_style_expressions
+publish_to: none
+environment:
+  sdk: '>=2.15.0 <3.0.0'
+
+dependencies:
+  collection: ^1.15.0
+  expressions:
+    path: ../expressions
+  meta: ^1.7.0
+
+dev_dependencies:
+  flutter_lints: ^1.0.4
+  test: ^1.20.1

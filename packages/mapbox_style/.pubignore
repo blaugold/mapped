@@ -1,0 +1,6 @@
+.dart_tool/
+build/
+tool/
+.packages
+mapbox-style-spec-v8.json
+pubspec.lock

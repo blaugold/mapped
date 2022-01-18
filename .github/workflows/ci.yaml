@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Melos
+        run: flutter pub global activate melos
+
+      - name: Bootstrap packages
+        run: melos bootstrap
+
+      - name: Check Dart formatting
+        run: melos run formatting:dart:check
+
+      - name: Analyze Dart code
+        run: melos run analyze --no-select
+
+      - name: Run Dart tests
+        run: melos run test:dart --no-select
+
+      - name: Run Flutter tests
+        run: melos run test:flutter --no-select

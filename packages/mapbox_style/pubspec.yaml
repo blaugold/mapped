@@ -1,0 +1,16 @@
+name: mapbox_style
+description: Work with Mapbox styles in Dart
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=2.15.0 <3.0.0'
+
+dependencies:
+  collection: ^1.15.0
+  csslib: ^0.17.1
+
+dev_dependencies:
+  meta: ^1.7.0
+  path: ^1.8.1
+  test: ^1.20.1

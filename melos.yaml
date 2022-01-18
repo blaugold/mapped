@@ -1,0 +1,27 @@
+name: mapped
+repository: https://github.com/blaugold/mapped
+packages:
+  - packages/**
+
+command:
+  version:
+    linkToCommits: true
+    branch: main
+
+scripts:
+  formatting:dart:check: dart format --set-exit-if-changed --output none .
+
+  analyze:
+    run: melos exec -c 1 -- dart analyze --fatal-infos
+
+  test:dart:
+    run: melos exec -c 1 -- dart test -r expanded
+    select-package:
+      flutter: false
+      dir-exists: test
+
+  test:flutter:
+    run: melos exec -c 1 -- flutter test -r expanded
+    select-package:
+      flutter: true
+      dir-exists: test
