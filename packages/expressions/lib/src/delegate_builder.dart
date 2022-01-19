@@ -2,12 +2,13 @@ import 'package:collection/collection.dart';
 
 import 'analysis.dart';
 import 'analysis_context.dart';
-import 'analysis_error.dart';
 import 'compilation.dart';
 import 'expression.dart';
+import 'expression_checker.dart';
 import 'expression_predicate.dart';
 import 'expression_type.dart';
 import 'functional_delegate.dart';
+import 'operation_arguments_checker.dart';
 import 'utils.dart';
 
 typedef DelegateBuilderFn<T> = void Function(DelegateBuilder<T> builder);
@@ -59,6 +60,11 @@ typedef LiteralTypeResolverFn = ExpressionType Function(
 
 typedef OperationTypeResolverFn = ExpressionType Function(
   Operation operation,
+  AnalysisContext context,
+);
+
+typedef LiteralCheckerFn = void Function(
+  Literal literal,
   AnalysisContext context,
 );
 
@@ -115,22 +121,27 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
 
   // === Checkers ==============================================================
 
+  void literalChecker(
+    LiteralCheckerFn check, {
+    ExpressionPredicate<Literal>? filter,
+  }) {
+    addAnalysisDelegate(
+      FunctionalExpressionCheckerDelegate(filter, check),
+    );
+  }
+
   void staticOperationArgumentTypeChecker(
     String operationName,
-    List<ExpressionType> argumentTypes,
+    List<ExpressionCheckerFn> argumentCheckers,
   ) {
     addAnalysisDelegate(
-      FunctionalExpressionCheckerDelegate<Operation>(
+      OperationArgumentsCheckerDelegate(
         byOperationName(operationName),
-        (expression, context) {
-          context.expectExactArgumentCount(argumentTypes.length);
-
-          final typedArguments =
-              maxLengthMapFromIterables(argumentTypes, expression.arguments);
-          for (final argument in typedArguments.entries) {
-            context.expectArgumentType(argument.value, argument.key);
-          }
-        },
+        (_) => [
+          for (final argumentChecker in argumentCheckers)
+            OperationArgumentChecker(argumentChecker)
+        ],
+        Range.exact(argumentCheckers.length),
       ),
     );
   }
@@ -189,7 +200,10 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
     ExpressionType type,
     T Function(T a, T b) compute,
   ) {
-    staticOperationArgumentTypeChecker(operationName, [type, type]);
+    staticOperationArgumentTypeChecker(
+      operationName,
+      List.filled(2, checkExpressionType(type)),
+    );
     staticOperationTypeResolver(operationName, type);
     binaryReduceOperationCompiler(operationName, compute);
   }

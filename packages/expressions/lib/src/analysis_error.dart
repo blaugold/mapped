@@ -22,9 +22,10 @@ class AnalysisError {
 
   final AnalysisContext context;
 
+  String get message => '${context.location}: ${descriptor.message(context)}';
+
   @override
-  String toString() =>
-      'AnalysisError at ${context.location}: ${descriptor.message(context)}';
+  String toString() => message;
 }
 
 abstract class AnalysisErrorDescriptor {
@@ -33,6 +34,40 @@ abstract class AnalysisErrorDescriptor {
   final String id;
 
   String message(AnalysisContext context);
+}
+
+class InvalidLiteralValue extends AnalysisErrorDescriptor {
+  InvalidLiteralValue(this.reason) : super('invalid_literal_value');
+
+  final String reason;
+
+  @override
+  String message(AnalysisContext context) {
+    final literal = context.expression as Literal;
+    return 'Literal has invalid value: $reason (Value: ${literal.value})';
+  }
+}
+
+class IncompatibleExpressionKind extends AnalysisErrorDescriptor {
+  IncompatibleExpressionKind(this.kind) : super('incompatible_expression_kind');
+
+  final ExpressionKind kind;
+
+  @override
+  String message(AnalysisContext context) =>
+      'The actual kind "${context.expression.kind_}" is '
+      'incompatible with the required kind "$kind".';
+}
+
+class IncompatibleExpressionType extends AnalysisErrorDescriptor {
+  IncompatibleExpressionType(this.type) : super('incompatible_expression_type');
+
+  final ExpressionType type;
+
+  @override
+  String message(AnalysisContext context) =>
+      'The actual type "${context.expressionType(context.expression)}" is '
+      'incompatible with the required type "$type".';
 }
 
 class TooFewArguments extends AnalysisErrorDescriptor {
@@ -60,23 +95,32 @@ class UnexpectedArgument extends AnalysisErrorDescriptor {
   String message(AnalysisContext context) => 'Unexpected argument.';
 }
 
-class IncompatibleArgumentType extends AnalysisErrorDescriptor {
-  IncompatibleArgumentType(this.parameterType)
-      : super('incompatible_argument_type');
-
-  final ExpressionType parameterType;
-
-  @override
-  String message(AnalysisContext context) =>
-      'The argument type ${context.expressionType(context.expression)} is '
-      'incompatible with the parameter type $parameterType.';
-}
-
 extension AnalysisContextErrorExt on AnalysisContext {
   AnalysisErrors get analysisErrors => firstOfType();
 
   void addError(AnalysisErrorDescriptor descriptor) {
     analysisErrors.add(AnalysisError(descriptor, this));
+  }
+
+  void invalidLiteralValue(String reason) {
+    assert(expression is Literal);
+    addError(InvalidLiteralValue(reason));
+  }
+
+  void expectExpressionKind<T extends Expression>(
+    Expression expression,
+    ExpressionKind<T> kind,
+  ) {
+    if (expression is! T) {
+      addError(IncompatibleExpressionKind(kind));
+    }
+  }
+
+  void expectExpressionType(Expression expression, ExpressionType type) {
+    final expressionType = this.expressionType(expression);
+    if (expressionType != unknownType && !expressionType.isAssignableTo(type)) {
+      expressionContext(expression).addError(IncompatibleExpressionType(type));
+    }
   }
 
   void expectExactArgumentCount(int count) {
@@ -90,13 +134,5 @@ extension AnalysisContextErrorExt on AnalysisContext {
 
   void unexpectedArgument(Expression argument) {
     addError(UnexpectedArgument());
-  }
-
-  void expectArgumentType(Expression argument, ExpressionType parameterType) {
-    final argumentType = expressionType(argument);
-    if (!argumentType.isAssignableTo(parameterType)) {
-      expressionContext(argument)
-          .addError(IncompatibleArgumentType(parameterType));
-    }
   }
 }

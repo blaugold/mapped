@@ -1,11 +1,11 @@
 import 'package:expressions/expressions.dart';
 
-Expression coerceExpression(Object? value) {
+Expression coerceToExpression(Object? value) {
   if (value is! Expression) {
     return Literal(value);
   }
   return value;
 }
 
-Operation testOperation(String name, Iterable<Object?> arguments) =>
-    Operation(name, arguments.map(coerceExpression).toList());
+Operation coercingOperation(String name, Iterable<Object?> arguments) =>
+    Operation(name, arguments.map(coerceToExpression).toList());

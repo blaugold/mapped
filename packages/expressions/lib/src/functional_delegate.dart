@@ -22,6 +22,15 @@ typedef ExpressionCheckerFn<T extends Expression> = void Function(
   AnalysisContext context,
 );
 
+ExpressionCheckerFn<T> combineExpressionCheckers<T extends Expression>(
+  Iterable<ExpressionCheckerFn<T>> checkers,
+) =>
+    (expression, context) {
+      for (final checker in checkers) {
+        checker(expression, context);
+      }
+    };
+
 typedef ExpressionCompilerFn<T extends Expression, C> = CompiledExpression<C, R>
     Function<R>(
   T expression,

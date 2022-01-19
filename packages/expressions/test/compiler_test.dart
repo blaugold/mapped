@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'fixtures/add_operation.dart';
 import 'fixtures/let_var_operation.dart';
 import 'fixtures/literal.dart';
-import 'utils/matcher.dart';
+import 'utils/expect.dart';
 
 void main() {
   final compiler = ExpressionCompiler.fromDelegateBuilder(

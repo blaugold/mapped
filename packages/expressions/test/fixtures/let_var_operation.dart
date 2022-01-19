@@ -2,94 +2,86 @@ import 'package:collection/collection.dart';
 import 'package:expressions/expressions.dart';
 
 import '../utils/expression.dart';
+import 'type_system.dart';
 
 Expression let(String name, Object? value, Object? out) =>
-    testOperation('let', [Literal(name), value, out]);
+    coercingOperation('let', [Literal(name), value, out]);
 
 Expression var_(String name) => Operation('var', [Literal(name)]);
 
-void letVarOperationDelegates(DelegateBuilder builder) {
-  builder
-    ..operationTypeResolver('let', (operation, context) {
-      if (operation.arguments.length < 3) {
-        return unknownType;
+final _variableNameChecker = regexLiteralStringChecker(
+  RegExp(r'^[a-zA-Z_][a-zA-Z0-9_]+$'),
+  valueDescription: 'variable name',
+  stringType: stringType,
+);
+
+void letVarOperationDelegates(DelegateBuilder builder) => builder
+  ..staticOperationArgumentTypeChecker('let', [
+    _variableNameChecker,
+    checkExpressionType(anyType),
+    checkExpressionType(anyType),
+  ])
+  ..operationTypeResolver(
+    'let',
+    (operation, context) => operation.argumentType(2, context) ?? unknownType,
+  )
+  ..operationArgumentContextResolver(
+    'let',
+    (operation, argument, parentContext) {
+      if (operation.arguments.indexOf(argument) != 2) {
+        // Only the last argument has the defined variable in its context.
+        return parentContext;
       }
 
-      final outputExpression = operation.arguments[2];
-      return context.expressionType(outputExpression);
-    })
-    ..operationArgumentContextResolver(
-      'let',
-      (operation, argument, parentContext) {
-        if (operation.arguments.indexOf(argument) != 2) {
-          return parentContext;
-        }
-
-        final arguments = operation.arguments;
-        if (arguments.length < 2) {
-          return parentContext;
-        }
-
-        final nameExpression = arguments[0];
-        if (nameExpression is! Literal) {
-          return parentContext;
-        }
-
-        final name = nameExpression.value;
-        if (name is! String) {
-          return parentContext;
-        }
-
-        final valueExpression = arguments[1];
-
-        return parentContext + VariableDefinition(name, valueExpression);
-      },
-    )
-    ..operationCompiler(
-      'let',
-      <R>(operation, context) =>
-          context.compiledExpression(operation.arguments[2]),
-    )
-    ..operationTypeResolver('var', (operation, context) {
-      if (operation.arguments.isEmpty) {
-        return unknownType;
+      final name = operation.letVariableName;
+      final value = operation.letVariableValue;
+      if (name == null || value == null) {
+        return parentContext;
       }
 
-      final variableNameExpression = operation.arguments[0];
-      if (variableNameExpression is! Literal) {
-        return unknownType;
-      }
+      return parentContext + _VariableDefinition(name, value);
+    },
+  )
+  ..operationCompiler(
+    'let',
+    <R>(operation, context) =>
+        context.compiledExpression(operation.arguments[2]),
+  )
+  ..staticOperationArgumentTypeChecker('var', [
+    _variableNameChecker,
+  ])
+  ..operationTypeResolver('var', (operation, context) {
+    final value = operation.variableValue(context);
+    return value == null ? unknownType : context.expressionType(value);
+  })
+  ..operationCompiler(
+    'var',
+    <R>(operation, context) =>
+        context.compiledExpression(operation.variableValue(context)!),
+  );
 
-      final variableName = variableNameExpression.value;
-      if (variableName is! String) {
-        return unknownType;
-      }
-
-      final variableDefinition = context
-          .allOfType<VariableDefinition>()
-          .firstWhereOrNull((definition) => definition.name == variableName);
-      if (variableDefinition == null) {
-        return unknownType;
-      }
-
-      return context.expressionType(variableDefinition.value);
-    })
-    ..operationCompiler(
-      'var',
-      <R>(operation, context) {
-        final variableName =
-            (operation.arguments[0] as Literal).value! as String;
-        final variableDefinition = context
-            .allOfType<VariableDefinition>()
-            .firstWhere((definition) => definition.name == variableName);
-        return context.compiledExpression(variableDefinition.value);
-      },
-    );
-}
-
-class VariableDefinition {
-  VariableDefinition(this.name, this.value);
+class _VariableDefinition {
+  _VariableDefinition(this.name, this.value);
 
   final String name;
   final Expression value;
+}
+
+extension on Operation {
+  String? get letVariableName => literalArgumentValue<String>(0);
+  Expression? get letVariableValue => argument(1);
+
+  String? get varVariableName => literalArgumentValue<String>(0);
+
+  Expression? variableValue(AnalysisContext context) {
+    final variableName = varVariableName;
+    if (variableName == null) {
+      return null;
+    }
+
+    return context
+        .allOfType<_VariableDefinition>()
+        .firstWhereOrNull((definition) => definition.name == variableName)
+        ?.value;
+  }
 }

@@ -31,7 +31,10 @@ class ExpressionCompilerImpl<C> extends ExpressionAnalyzerImpl
 
   @override
   CompiledExpression<C, R> compileExpression<R>(Expression expression) =>
-      resolveCompiledExpression(expression, createRootContext(expression));
+      resolveCompiledExpression(
+        expression,
+        resolveExpressionContext(expression, createRootContext()),
+      );
 
   @override
   CompiledExpression<C, R> resolveCompiledExpression<R>(

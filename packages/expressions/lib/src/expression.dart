@@ -1,3 +1,12 @@
+class ExpressionKind<T extends Expression> {
+  const ExpressionKind(this.name);
+
+  final String name;
+
+  @override
+  String toString() => name;
+}
+
 abstract class Expression {
   var _hasParent = false;
 
@@ -12,10 +21,17 @@ abstract class Expression {
     _hasParent = true;
     _parent = parent;
   }
+
+  ExpressionKind get kind_;
 }
 
 class Literal extends Expression {
   Literal(this.value);
+
+  static const kind = ExpressionKind<Literal>('literal');
+
+  @override
+  ExpressionKind get kind_ => kind;
 
   final Object? value;
 
@@ -30,6 +46,11 @@ class ExpressionsObject extends Expression {
     }
   }
 
+  static const kind = ExpressionKind<ExpressionsObject>('object');
+
+  @override
+  ExpressionKind get kind_ => kind;
+
   final Map<String, Expression> fields;
 
   @override
@@ -42,6 +63,11 @@ class Operation extends Expression {
       argument.parent = this;
     }
   }
+
+  static const kind = ExpressionKind<Operation>('operation');
+
+  @override
+  ExpressionKind get kind_ => kind;
 
   final String name;
 
@@ -110,7 +136,7 @@ class ExpressionLocation {
 
   @override
   String toString() {
-    var result = '';
+    var result = '_';
 
     for (var location = this;
         location.parent != null;
@@ -123,7 +149,7 @@ class ExpressionLocation {
           result = '${location.name}($result)';
           break;
         case ExpressionLocationType.operationArgument:
-          result = '${location.name}: $result';
+          result = '#${location.name}: $result';
           break;
         case ExpressionLocationType.objectField:
           result = '{${location.name}: $result}';
