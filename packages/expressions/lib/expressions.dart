@@ -22,7 +22,9 @@ export 'src/analyzer.dart' show ExpressionAnalyzer;
 export 'src/compilation.dart'
     show
         CompiledExpression,
+        CompiledExpressionFn,
         CompiledExpressionResolver,
+        ConstantCompiledExpression,
         ExpressionCompilerDelegate,
         AnalysisContextCompilationExt,
         assertRequiredType;
@@ -33,8 +35,10 @@ export 'src/delegate_builder.dart'
         DelegateBuilderExt,
         DelegateBuilderFn,
         LiteralTypeResolverFn,
+        MapOperationCompilerFn,
         OperationArgumentContextResolverFn,
-        OperationTypeResolverFn;
+        OperationTypeResolverFn,
+        ReduceOperationCompilerFn;
 export 'src/encoding.dart'
     show ExpressionDecoder, ExpressionDecodingException, ExpressionEncoder;
 export 'src/expression.dart'

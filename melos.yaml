@@ -9,6 +9,8 @@ command:
     branch: main
 
 scripts:
+  formatting:dart: dart format .
+
   formatting:dart:check: dart format --set-exit-if-changed --output none .
 
   analyze:

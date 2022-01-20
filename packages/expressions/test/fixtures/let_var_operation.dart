@@ -45,7 +45,7 @@ void letVarOperationDelegates(DelegateBuilder builder) => builder
   ..operationCompiler(
     'let',
     <R>(operation, context) =>
-        context.compiledExpression(operation.arguments[2]),
+        context.compiledExpression<Object?, R>(operation.arguments[2]),
   )
   ..staticOperationArgumentTypeChecker('var', [
     _variableNameChecker,
@@ -56,8 +56,8 @@ void letVarOperationDelegates(DelegateBuilder builder) => builder
   })
   ..operationCompiler(
     'var',
-    <R>(operation, context) =>
-        context.compiledExpression(operation.variableValue(context)!),
+    <R>(operation, context) => context
+        .compiledExpression<Object?, R>(operation.variableValue(context)!),
   );
 
 class _VariableDefinition {

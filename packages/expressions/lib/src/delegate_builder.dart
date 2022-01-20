@@ -9,6 +9,7 @@ import 'expression_predicate.dart';
 import 'expression_type.dart';
 import 'functional_delegate.dart';
 import 'operation_arguments_checker.dart';
+import 'optimization.dart';
 import 'utils.dart';
 
 typedef DelegateBuilderFn<T> = void Function(DelegateBuilder<T> builder);
@@ -73,6 +74,14 @@ typedef OperationCompilerFn<C> = CompiledExpression<C, R> Function<R>(
   AnalysisContext context,
 );
 
+typedef ReduceOperationCompilerFn<T> = CompiledExpression<C, T> Function<C>(
+  List<CompiledExpression<C, T>> arguments,
+);
+
+typedef MapOperationCompilerFn<T, R> = CompiledExpression<C, R> Function<C>(
+  CompiledExpression<C, T> argument,
+);
+
 extension DelegateBuilderExt<C> on DelegateBuilder<C> {
   // === Context resolvers =====================================================
 
@@ -130,19 +139,31 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
     );
   }
 
-  void staticOperationArgumentTypeChecker(
+  void operationArgumentChecker(
     String operationName,
-    List<ExpressionCheckerFn> argumentCheckers,
+    OperationArgumentCheckersFactory factory,
+    Range argumentCount,
   ) {
     addAnalysisDelegate(
       OperationArgumentsCheckerDelegate(
         byOperationName(operationName),
-        (_) => [
-          for (final argumentChecker in argumentCheckers)
-            OperationArgumentChecker(argumentChecker)
-        ],
-        Range.exact(argumentCheckers.length),
+        factory,
+        argumentCount,
       ),
+    );
+  }
+
+  void staticOperationArgumentTypeChecker(
+    String operationName,
+    List<ExpressionCheckerFn> argumentCheckers,
+  ) {
+    operationArgumentChecker(
+      operationName,
+      (_) => [
+        for (final argumentChecker in argumentCheckers)
+          OperationArgumentChecker(argumentChecker)
+      ],
+      Range.exact(argumentCheckers.length),
     );
   }
 
@@ -156,15 +177,14 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
       FunctionalExpressionCompilerDelegate<Literal, C>(
         filter,
         <R>(expression, context) {
-          final value =
-              (transform?.call(expression.value) ?? expression.value) as R;
-          return (_) => value;
+          final value = transform?.call(expression.value) ?? expression.value;
+          return ConstantCompiledExpression(value as R);
         },
       ),
     );
   }
 
-  void operationCompiler(String operationName, OperationCompilerFn compile) {
+  void operationCompiler(String operationName, OperationCompilerFn<C> compile) {
     addCompilerDelegate(
       FunctionalExpressionCompilerDelegate<Operation, C>(
         byOperationName(operationName),
@@ -173,38 +193,111 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
     );
   }
 
-  void binaryReduceOperationCompiler<T>(
+  void reduceOperationCompiler<T>(
     String operationName,
-    T Function(T a, T b) compute,
+    ReduceOperationCompilerFn<T> compile,
   ) {
     addCompilerDelegate(
       FunctionalExpressionCompilerDelegate<Operation, C>(
         byOperationName(operationName),
-        <R>(expression, context) {
-          final a = context.compiledExpression<T>(expression.arguments[0]);
-          final b = context.compiledExpression<T>(expression.arguments[1]);
+        <R>(expression, context) => assertRequiredType(
+          optimizeReduceOperationToConstant<C, T>(
+            expression,
+            context,
+            compile,
+          ),
+        ),
+      ),
+    );
+  }
 
-          return assertRequiredType(
-            (evaluationContext) =>
-                compute(a(evaluationContext), b(evaluationContext)),
-          );
-        },
+  void mapOperationCompiler<T, R>(
+    String operationName,
+    MapOperationCompilerFn<T, R> compile,
+  ) {
+    addCompilerDelegate(
+      FunctionalExpressionCompilerDelegate<Operation, C>(
+        byOperationName(operationName),
+        <RR>(expression, context) => assertRequiredType(
+          optimizeMapOperationToConstant<C, T, R>(
+            expression,
+            context,
+            compile,
+          ),
+        ),
       ),
     );
   }
 
   // === Operations ============================================================
 
+  void constantOperation(
+    String operationName,
+    ExpressionType type,
+    Object? value,
+  ) {
+    staticOperationArgumentTypeChecker(operationName, []);
+    staticOperationTypeResolver(operationName, type);
+    addCompilerDelegate(
+      FunctionalExpressionCompilerDelegate<Operation, C>(
+        byOperationName(operationName),
+        <R>(expression, context) => ConstantCompiledExpression(value as R),
+      ),
+    );
+  }
+
+  void reduceOperation<T>(
+    String operationName,
+    ExpressionType type,
+    Range argumentCount,
+    ReduceOperationCompilerFn<T> compile,
+  ) {
+    operationArgumentChecker(
+      operationName,
+      (_) => [
+        OperationArgumentChecker(
+          checkExpressionType(type),
+          repeats: argumentCount,
+        )
+      ],
+      argumentCount,
+    );
+    staticOperationTypeResolver(operationName, type);
+    reduceOperationCompiler(operationName, compile);
+  }
+
   void binaryReduceOperation<T>(
     String operationName,
     ExpressionType type,
     T Function(T a, T b) compute,
   ) {
-    staticOperationArgumentTypeChecker(
+    reduceOperation<T>(
       operationName,
-      List.filled(2, checkExpressionType(type)),
+      type,
+      const Range.exact(2),
+      <C>(arguments) {
+        final a = arguments[0];
+        final b = arguments[1];
+        return CompiledExpression((_) => compute(a(_), b(_)));
+      },
     );
-    staticOperationTypeResolver(operationName, type);
-    binaryReduceOperationCompiler(operationName, compute);
+  }
+
+  void mapOperation<T, R>(
+    String operationName,
+    ExpressionType inputType,
+    ExpressionType outputType,
+    R Function(T value) compute,
+  ) {
+    operationArgumentChecker(
+      operationName,
+      (_) => [OperationArgumentChecker(checkExpressionType(inputType))],
+      const Range.exact(1),
+    );
+    staticOperationTypeResolver(operationName, outputType);
+    mapOperationCompiler<T, R>(
+      operationName,
+      <C>(argument) => CompiledExpression((_) => compute(argument(_))),
+    );
   }
 }

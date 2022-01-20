@@ -22,4 +22,19 @@ void main() {
   test('evaluate let var', () {
     expectExpressionValue(let('a', 'b', var_('a')), 'b', compiler);
   });
+
+  test('literal is compiled into a constant expression', () {
+    final compiledExpression = compiler.compileExpression<num>(Literal(1));
+    expect(
+      compiledExpression,
+      isA<ConstantCompiledExpression>(),
+    );
+  });
+
+  test('add operation with constants is compiled into a constant', () {
+    final compiledExpression =
+        compiler.compileExpression<Object?>(add(1, add(1, 1)));
+    expect(compiledExpression, isA<ConstantCompiledExpression>());
+    expect((compiledExpression as ConstantCompiledExpression).value, 3);
+  });
 }

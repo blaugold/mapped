@@ -13,12 +13,14 @@ Map<K, V> maxLengthMapFromIterables<K, V>(
 }
 
 class Range {
-  const Range(this.start, this.end)
+  const Range([this.start, this.end])
       : assert(start == null || end == null || start <= end);
 
   const Range.empty() : this(null, null);
 
   const Range.exact(int value) : this(value, value);
+
+  const Range.zero() : this.exact(0);
 
   final int? start;
   final int? end;
@@ -35,7 +37,11 @@ class Range {
 
   bool get isPositive => start != null && start! > 0;
 
+  bool get isPositiveOrZero => isPositive || start == 0;
+
   bool get isNegative => end != null && end! < 0;
+
+  bool get isNegativeOrZero => isNegative || end == 0;
 
   Iterable<int> get values sync* {
     if (isEmpty) {
@@ -52,6 +58,20 @@ class Range {
     } else {
       var i = end!;
       yield i--;
+    }
+  }
+
+  bool includes(int value) {
+    if (isEmpty) {
+      return false;
+    }
+
+    final start = this.start;
+    final end = this.end;
+    if (start != null) {
+      return start <= value && (end == null || value <= end);
+    } else {
+      return value <= end!;
     }
   }
 }

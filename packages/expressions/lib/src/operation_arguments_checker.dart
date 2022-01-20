@@ -15,16 +15,18 @@ enum ArgumentCheckerContinuation {
 abstract class OperationArgumentChecker {
   factory OperationArgumentChecker(
     ExpressionCheckerFn argumentChecker, {
-    bool repeatable = false,
+    Range repeats = const Range.exact(1),
   }) =>
-      _OperationArgumentGroupChecker([argumentChecker], repeatable: repeatable);
+      _OperationArgumentGroupChecker([argumentChecker], repeats: repeats);
 
   factory OperationArgumentChecker.group(
     List<ExpressionCheckerFn> argumentCheckers, {
-    bool repeatable,
+    Range repeats,
   }) = _OperationArgumentGroupChecker;
 
   OperationArgumentChecker.custom();
+
+  bool isOptional();
 
   ArgumentCheckerContinuation checkArgument(
     Operation operation,
@@ -36,14 +38,19 @@ abstract class OperationArgumentChecker {
 class _OperationArgumentGroupChecker extends OperationArgumentChecker {
   _OperationArgumentGroupChecker(
     this.argumentCheckers, {
-    this.repeatable = false,
-  }) : super.custom();
+    this.repeats = const Range.exact(1),
+  })  : assert(repeats.isPositiveOrZero),
+        super.custom();
 
   final List<ExpressionCheckerFn> argumentCheckers;
 
-  final bool repeatable;
+  final Range repeats;
 
+  var _currentRepeat = 0;
   var _currentArgumentCheckerIndex = 0;
+
+  @override
+  bool isOptional() => repeats.includes(0);
 
   @override
   ArgumentCheckerContinuation checkArgument(
@@ -61,7 +68,14 @@ class _OperationArgumentGroupChecker extends OperationArgumentChecker {
     if (currentArgumentCheckerIndex < argumentCheckers.length - 1) {
       return ArgumentCheckerContinuation.next;
     } else {
-      if (repeatable) {
+      // We have finished a repeat. Now decide whether we are done, can continue
+      // or must continue.
+      _currentRepeat++;
+
+      if (repeats.includes(_currentRepeat + 1)) {
+        if (repeats.isExact) {
+          return ArgumentCheckerContinuation.next;
+        }
         return ArgumentCheckerContinuation.maybeNext;
       }
 
@@ -81,14 +95,18 @@ class OperationArgumentsCheckerDelegate
     this._checkersFactory,
     this._argumentCount,
   ) : super(filter) {
-    if (!(_argumentCount.isEmpty || _argumentCount.isPositive)) {
+    if (!_argumentCount.isPositiveOrZero) {
       throw ArgumentError.value(
         _argumentCount,
         '_argumentCount',
-        'must be empty or positive',
+        'must be zero or positive',
       );
     }
   }
+
+  OperationArgumentsCheckerDelegate.noArguments(
+    ExpressionPredicate<Operation>? filter,
+  ) : this(filter, (_) => [], const Range.zero());
 
   final OperationArgumentCheckersFactory _checkersFactory;
 
@@ -100,13 +118,10 @@ class OperationArgumentsCheckerDelegate
     AnalysisContext context,
   ) {
     final checkers = _checkersFactory(expression).toList();
-    if (checkers.isEmpty) {
-      throw StateError(
-        'Operation argument checker factory created no checkers for '
-        '$expression.',
-      );
-    }
 
+    // The current checker. After a checker has received the number of required
+    // argument it is set to null. If this variable has a value, it means that
+    // the checker has not yet received the required number of arguments.
     OperationArgumentChecker? checker;
     ArgumentCheckerContinuation? continuation;
 
@@ -142,8 +157,33 @@ class OperationArgumentsCheckerDelegate
       }
     }
 
-    if (checkers.isNotEmpty ||
-        continuation == ArgumentCheckerContinuation.next) {
+    if (continuation == ArgumentCheckerContinuation.maybeNext) {
+      // The last checker finished cleanly since it does not require another
+      // argument.
+      checker = null;
+    }
+
+    // We finish up checkers that are optional.
+    if (checker == null) {
+      while (checkers.isNotEmpty) {
+        checker = checkers.removeAt(0);
+        if (!checker.isOptional()) {
+          break;
+        } else {
+          checker = null;
+        }
+      }
+    }
+
+    // Load up the next checker that requires an argument, if it exists.
+    if (checker == null && checkers.isNotEmpty) {
+      checker = checkers.removeAt(0);
+    }
+
+    if (checker != null) {
+      // We have too few arguments, because there is at least one checker that
+      // requires another argument.
+
       assert(!_argumentCount.isEmpty);
       if (_argumentCount.isExact) {
         context.addError(TooFewArguments(exactly: _argumentCount.start));
