@@ -37,14 +37,18 @@ abstract class AnalysisErrorDescriptor {
 }
 
 class InvalidLiteralValue extends AnalysisErrorDescriptor {
-  InvalidLiteralValue(this.reason) : super('invalid_literal_value');
+  InvalidLiteralValue([this.reason]) : super('invalid_literal_value');
 
-  final String reason;
+  final String? reason;
 
   @override
   String message(AnalysisContext context) {
     final literal = context.expression as Literal;
-    return 'Literal has invalid value: $reason (Value: ${literal.value})';
+    return [
+      'Literal has invalid value',
+      if (reason != null) ...[': ', reason],
+      ' (Value: ${literal.value})'
+    ].join();
   }
 }
 
@@ -102,7 +106,7 @@ extension AnalysisContextErrorExt on AnalysisContext {
     analysisErrors.add(AnalysisError(descriptor, this));
   }
 
-  void invalidLiteralValue(String reason) {
+  void invalidLiteralValue([String? reason]) {
     assert(expression is Literal);
     addError(InvalidLiteralValue(reason));
   }

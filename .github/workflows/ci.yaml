@@ -35,5 +35,5 @@ jobs:
       - name: Run Dart tests
         run: melos run test:dart --no-select
 
-      - name: Run Flutter tests
-        run: melos run test:flutter --no-select
+      - name: Run benchmarks
+        run: melos run benchmarks --no-select

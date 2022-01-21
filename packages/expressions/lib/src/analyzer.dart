@@ -10,10 +10,17 @@ import 'expression_type.dart';
 abstract class ExpressionAnalyzer {
   factory ExpressionAnalyzer({
     required List<AnalysisDelegate> analysisDelegates,
+    List<Object>? context,
   }) = ExpressionAnalyzerImpl;
 
-  factory ExpressionAnalyzer.fromDelegateBuilder(DelegateBuilder builder) =>
-      ExpressionAnalyzer(analysisDelegates: builder.analysisDelegates);
+  factory ExpressionAnalyzer.fromDelegateBuilder(
+    DelegateBuilder builder, {
+    List<Object>? context,
+  }) =>
+      ExpressionAnalyzer(
+        analysisDelegates: builder.analysisDelegates,
+        context: context,
+      );
 
   List<AnalysisError> checkExpression(Expression expression);
 
@@ -27,9 +34,12 @@ class ExpressionAnalyzerImpl
         ExpressionContextResolver {
   ExpressionAnalyzerImpl({
     required this.analysisDelegates,
+    this.context,
   });
 
   final List<AnalysisDelegate> analysisDelegates;
+
+  final List<Object>? context;
 
   @override
   List<AnalysisError> checkExpression(Expression expression) {
@@ -112,6 +122,9 @@ class ExpressionAnalyzerImpl
     context += this;
     context += _ExpressionContexts();
     context += AnalysisErrors();
+    for (final element in this.context ?? <Object?>[]) {
+      context += element;
+    }
     return context;
   }
 

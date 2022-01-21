@@ -1,7 +1,7 @@
 import 'package:expressions/expressions.dart';
 
 import 'delegate_builder.dart';
-import 'types.dart';
+import 'type_system.dart';
 
 void decisionOperations(StyleExpressionDelegateBuilder builder) => builder
   ..mapOperation<bool, bool>(
@@ -10,11 +10,11 @@ void decisionOperations(StyleExpressionDelegateBuilder builder) => builder
     booleanType,
     (value) => !value,
   )
-  ..reduceOperation<bool>(
+  ..reduceOperation<bool, bool>(
     'all',
     booleanType,
     const Range(2),
-    <C>(arguments) {
+    <C>(arguments, _) {
       switch (arguments.length) {
         case 2:
           final arg0 = arguments[0];
@@ -203,11 +203,11 @@ void decisionOperations(StyleExpressionDelegateBuilder builder) => builder
       }
     },
   )
-  ..reduceOperation<bool>(
+  ..reduceOperation<bool, bool>(
     'any',
     booleanType,
     const Range(2),
-    <C>(arguments) {
+    <C>(arguments, _) {
       switch (arguments.length) {
         case 2:
           final arg0 = arguments[0];

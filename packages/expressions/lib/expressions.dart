@@ -34,11 +34,13 @@ export 'src/delegate_builder.dart'
         DelegateBuilder,
         DelegateBuilderExt,
         DelegateBuilderFn,
+        LiteralCheckerFn,
         LiteralTypeResolverFn,
         MapOperationCompilerFn,
         OperationArgumentContextResolverFn,
+        OperationCompilerFn,
         OperationTypeResolverFn,
-        ReduceOperationCompilerFn;
+        CombineOperationCompilerFn;
 export 'src/encoding.dart'
     show ExpressionDecoder, ExpressionDecodingException, ExpressionEncoder;
 export 'src/expression.dart'
@@ -87,4 +89,15 @@ export 'src/operation_arguments_checker.dart'
         OperationArgumentChecker,
         OperationArgumentCheckersFactory,
         OperationArgumentsCheckerDelegate;
+export 'src/optimization.dart'
+    show
+        optimizeMapOperationToConstant,
+        optimizeConcatOperationToConstant,
+        optimizeReduceOperationToConstant;
+export 'src/runtime_type_system.dart'
+    show
+        AnalysisContextRuntimeTypeSystemExt,
+        DefiniteRuntimeType,
+        RuntimeTypeSystem,
+        RuntimeTypeDelegate;
 export 'src/utils.dart' show Range;

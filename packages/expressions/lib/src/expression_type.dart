@@ -23,7 +23,7 @@ class HierarchicalType extends ExpressionType {
 
   final String name;
 
-  HierarchicalType? superType;
+  final HierarchicalType? superType;
 
   late final List<HierarchicalType> allSuperTypes = [
     if (superType != null) superType!,
@@ -64,6 +64,9 @@ class UnionType extends ExpressionType {
 
     return types.any((type) => type.isAssignableFrom(other));
   }
+
+  @override
+  String toString() => types.map((type) => type.toString()).join(' | ');
 }
 
 class _NullType extends ExpressionType {

@@ -3,15 +3,15 @@ import 'dart:math';
 import 'package:expressions/expressions.dart';
 
 import 'delegate_builder.dart';
-import 'types.dart';
+import 'type_system.dart';
 import 'utils.dart';
 
 void mathOperations(StyleExpressionDelegateBuilder builder) => builder
-  ..reduceOperation<double>(
+  ..reduceOperation<double, double>(
     '-',
     numberType,
     const Range(1, 2),
-    <C>(arguments) {
+    <C>(arguments, __) {
       switch (arguments.length) {
         case 1:
           final arg0 = arguments[0];
@@ -25,11 +25,11 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
       }
     },
   )
-  ..reduceOperation<double>(
+  ..reduceOperation<double, double>(
     '*',
     numberType,
     const Range(2),
-    <C>(arguments) {
+    <C>(arguments, __) {
       switch (arguments.length) {
         case 2:
           final arg0 = arguments[0];
@@ -215,11 +215,11 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
   ..binaryMathOperation('/', (a, b) => a / b)
   ..binaryMathOperation('%', (a, b) => a.remainder(b))
   ..binaryMathOperation('^', (a, b) => pow(a, b).toDouble())
-  ..reduceOperation<double>(
+  ..reduceOperation<double, double>(
     '+',
     numberType,
     const Range(2),
-    <C>(arguments) {
+    <C>(arguments, __) {
       switch (arguments.length) {
         case 2:
           final arg0 = arguments[0];
@@ -415,21 +415,21 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
   ..mathConstantOperation('ln2', ln2)
   ..unaryMathOperation('log10', (value) => log(value) / ln10)
   ..unaryMathOperation('log2', (value) => log(value) / ln2)
-  ..reduceOperation<double>(
+  ..reduceOperation<double, double>(
     'max',
     numberType,
     const Range(2),
-    <C>(arguments) => CompiledExpression(
+    <C>(arguments, __) => CompiledExpression(
       (_) => arguments
           .skip(1)
           .fold<double>(arguments[0](_), (a, b) => max(a, b(_))),
     ),
   )
-  ..reduceOperation<double>(
+  ..reduceOperation<double, double>(
     'min',
     numberType,
     const Range(2),
-    <C>(arguments) => CompiledExpression(
+    <C>(arguments, __) => CompiledExpression(
       (_) => arguments
           .skip(1)
           .fold<double>(arguments[0](_), (a, b) => min(a, b(_))),

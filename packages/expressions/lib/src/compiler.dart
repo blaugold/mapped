@@ -9,12 +9,17 @@ abstract class ExpressionCompiler<C> implements ExpressionAnalyzer {
   factory ExpressionCompiler({
     required List<AnalysisDelegate> analysisDelegates,
     required List<ExpressionCompilerDelegate<C>> compilerDelegates,
+    List<Object>? context,
   }) = ExpressionCompilerImpl;
 
-  factory ExpressionCompiler.fromDelegateBuilder(DelegateBuilder<C> builder) =>
+  factory ExpressionCompiler.fromDelegateBuilder(
+    DelegateBuilder<C> builder, {
+    List<Object>? context,
+  }) =>
       ExpressionCompiler(
         analysisDelegates: builder.analysisDelegates,
         compilerDelegates: builder.compilerDelegates,
+        context: context,
       );
 
   CompiledExpression<C, R> compileExpression<R>(Expression expression);
@@ -25,7 +30,8 @@ class ExpressionCompilerImpl<C> extends ExpressionAnalyzerImpl
   ExpressionCompilerImpl({
     required List<AnalysisDelegate> analysisDelegates,
     required this.compilerDelegates,
-  }) : super(analysisDelegates: analysisDelegates);
+    List<Object>? context,
+  }) : super(analysisDelegates: analysisDelegates, context: context);
 
   final List<ExpressionCompilerDelegate<C>> compilerDelegates;
 
