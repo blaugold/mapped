@@ -9,6 +9,14 @@ void typeOperations(StyleExpressionDelegateBuilder builder) => builder
   ..typeAssertion('boolean', booleanType)
   ..typeAssertion('number', numberType)
   ..typeAssertion('string', stringType)
+  ..typeAssertion('object', objectType)
+  ..mapOperation(
+    'to-boolean',
+    nullableValueType,
+    booleanType,
+    convertValueToBoolean,
+  )
+  ..conversionWithFallbacks('to-number', numberType, convertValueToNumber)
   ..mapOperation(
     'to-string',
     nullableValueType,
@@ -50,19 +58,57 @@ extension _DelegateBuilder<C> on DelegateBuilder<C> {
             type,
             <T>() => CompiledExpression<C, T>((_) {
               for (final arg in arguments) {
-                try {
-                  final value = arg(_);
-                  if (value is T) {
-                    return value;
-                  }
-                } on ExpressionFailedException {
-                  // ignore: empty_catches
+                final value = arg(_);
+                if (value is T) {
+                  return value;
                 }
               }
 
-              throw ExpressionFailedException('$type type assertion failed.');
+              throw ExpressionException('$type type assertion failed.');
             }),
           ),
+        );
+      },
+    );
+  }
+
+  void conversionWithFallbacks<T>(
+    String operationName,
+    ExpressionType type,
+    T? Function(Object? value) convert,
+  ) {
+    final argumentsType = nullableValueType;
+    const argumentsCount = Range(1);
+
+    operationArgumentChecker(
+      operationName,
+      (operation) => [
+        OperationArgumentChecker(
+          checkExpressionType(argumentsType),
+          repeats: argumentsCount,
+        ),
+      ],
+      argumentsCount,
+    );
+    staticOperationTypeResolver(operationName, type);
+    operationCompiler(
+      operationName,
+      <R>(operation, context) {
+        final arguments = operation.arguments
+            .map(context.compiledExpression<C, Object?>)
+            .toList(growable: false);
+
+        return assertRequiredType(
+          CompiledExpression<C, T>((_) {
+            for (final arg in arguments) {
+              final value = convert(arg(_));
+              if (value != null) {
+                return value;
+              }
+            }
+
+            throw ExpressionException('$type type conversion failed.');
+          }),
         );
       },
     );
