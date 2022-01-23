@@ -1,4 +1,4 @@
-import 'package:expressions/expressions.dart';
+import '../expressions.dart';
 
 Expression coerceToExpression(Object? value) {
   if (value is! Expression) {

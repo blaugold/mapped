@@ -37,7 +37,9 @@ CompiledExpression<C, R> optimizeReduceOperationToConstant<C, T, R extends T>(
     return reducedConstants;
   }
 
-  return compile([...dynamicArguments, reducedConstants], context);
+  // By making the reduced constant argument the first argument, we can
+  // improve the performance of operations which use short-circuiting.
+  return compile([reducedConstants, ...dynamicArguments], context);
 }
 
 CompiledExpression<C, R> optimizeMapOperationToConstant<C, T, R>(
@@ -85,8 +87,11 @@ Iterable<CompiledExpression<C, T>> _concatContinuousConstantArguments<C, T>(
   CombineOperationCompilerFn<T, T> compile,
   AnalysisContext context,
 ) sync* {
-  final argumentGroups = arguments
-      .splitBefore((argument) => argument is! ConstantCompiledExpression);
+  final argumentGroups = arguments.splitBetween(
+    (a, b) =>
+        a is! ConstantCompiledExpression<C, T> ||
+        b is! ConstantCompiledExpression<C, T>,
+  );
 
   for (final group in argumentGroups) {
     if (group.length == 1) {

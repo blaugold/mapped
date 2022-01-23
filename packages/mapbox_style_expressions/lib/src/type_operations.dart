@@ -23,7 +23,7 @@ void typeOperations(StyleExpressionDelegateBuilder builder) => builder
     stringType,
     convertValueToString,
   )
-  ..mapOperationWithContext(
+  ..mapOperationWithAnalysisContext(
     'typeof',
     nullableValueType,
     stringType,
@@ -35,6 +35,7 @@ extension _DelegateBuilder<C> on DelegateBuilder<C> {
   void typeAssertion(String operationName, ExpressionType type) {
     const argumentsCount = Range(1);
 
+    registerOperation(operationName);
     operationArgumentChecker(
       operationName,
       (operation) => [
@@ -80,6 +81,7 @@ extension _DelegateBuilder<C> on DelegateBuilder<C> {
     final argumentsType = nullableValueType;
     const argumentsCount = Range(1);
 
+    registerOperation(operationName);
     operationArgumentChecker(
       operationName,
       (operation) => [

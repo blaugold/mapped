@@ -22,6 +22,6 @@ extension StyleExpressionDelegateBuilderExt on StyleExpressionDelegateBuilder {
     String operationName,
     double Function(double a, double b) compute,
   ) {
-    binaryReduceOperation(operationName, numberType, compute);
+    binaryReduceOperation(operationName, numberType, numberType, compute);
   }
 }

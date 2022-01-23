@@ -17,7 +17,8 @@ export 'src/analysis_error.dart'
         InvalidLiteralValue,
         IncompatibleExpressionType,
         TooFewArguments,
-        UnexpectedArgument;
+        UnexpectedArgument,
+        UnknownOperation;
 export 'src/analyzer.dart' show ExpressionAnalyzer;
 export 'src/compilation.dart'
     show
@@ -32,7 +33,6 @@ export 'src/compiler.dart' show ExpressionCompiler;
 export 'src/delegate_builder.dart'
     show
         DelegateBuilder,
-        DelegateBuilderExt,
         DelegateBuilderFn,
         LiteralCheckerFn,
         LiteralTypeResolverFn,

@@ -8,8 +8,8 @@ void stringOperations(StyleExpressionDelegateBuilder builder) => builder
   ..concatOperation<Object?, String>(
     'concat',
     nullableValueType,
-    stringType,
     const Range(2),
+    stringType,
     <C>(arguments, __) => CompiledExpression((_) {
       final stringBuffer = StringBuffer();
       for (final arg in arguments) {

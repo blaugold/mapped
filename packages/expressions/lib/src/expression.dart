@@ -136,27 +136,29 @@ class ExpressionLocation {
 
   @override
   String toString() {
-    var result = '_';
+    String? result;
 
-    for (var location = this;
-        location.parent != null;
-        location = location.parent!) {
+    for (ExpressionLocation? location = this;
+        location != null;
+        location = location.parent) {
       switch (location.type) {
         case ExpressionLocationType.root:
-          result = 'Expression($result)';
+          result = 'expr(${result ?? '_'})';
           break;
         case ExpressionLocationType.operation:
-          result = '${location.name}($result)';
+          result = result == null
+              ? '--> ${location.name}() <--'
+              : '${location.name}($result)';
           break;
         case ExpressionLocationType.operationArgument:
-          result = '#${location.name}: $result';
+          result = '#${location.name}: ${result ?? '_'}';
           break;
         case ExpressionLocationType.objectField:
-          result = '{${location.name}: $result}';
+          result = '{${location.name}: ${result ?? '_'}}';
           break;
       }
     }
 
-    return result;
+    return result!;
   }
 }

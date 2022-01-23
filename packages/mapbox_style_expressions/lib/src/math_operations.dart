@@ -11,6 +11,7 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
     '-',
     numberType,
     const Range(1, 2),
+    numberType,
     <C>(arguments, __) {
       switch (arguments.length) {
         case 1:
@@ -29,6 +30,7 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
     '*',
     numberType,
     const Range(2),
+    numberType,
     <C>(arguments, __) {
       switch (arguments.length) {
         case 2:
@@ -219,6 +221,7 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
     '+',
     numberType,
     const Range(2),
+    numberType,
     <C>(arguments, __) {
       switch (arguments.length) {
         case 2:
@@ -419,6 +422,7 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
     'max',
     numberType,
     const Range(2),
+    numberType,
     <C>(arguments, __) => CompiledExpression(
       (_) => arguments
           .skip(1)
@@ -429,6 +433,7 @@ void mathOperations(StyleExpressionDelegateBuilder builder) => builder
     'min',
     numberType,
     const Range(2),
+    numberType,
     <C>(arguments, __) => CompiledExpression(
       (_) => arguments
           .skip(1)

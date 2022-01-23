@@ -74,6 +74,13 @@ class IncompatibleExpressionType extends AnalysisErrorDescriptor {
       'incompatible with the required type "$type".';
 }
 
+class UnknownOperation extends AnalysisErrorDescriptor {
+  UnknownOperation() : super('unknown_operation');
+
+  @override
+  String message(AnalysisContext context) => 'The operation is not known.';
+}
+
 class TooFewArguments extends AnalysisErrorDescriptor {
   TooFewArguments({this.minimum, this.exactly})
       : assert(minimum != null || exactly != null),
@@ -88,7 +95,7 @@ class TooFewArguments extends AnalysisErrorDescriptor {
         'Too few arguments. Expected ',
         if (exactly != null) 'exactly $exactly ',
         if (minimum != null) 'at least $minimum ',
-        'but got ${(context.expression.parent! as Operation).arguments.length}.'
+        'but got ${(context.expression as Operation).arguments.length}.'
       ].join(' ');
 }
 
@@ -127,6 +134,10 @@ extension AnalysisContextErrorExt on AnalysisContext {
     }
   }
 
+  void unknownOperation() {
+    addError(UnknownOperation());
+  }
+
   void expectExactArgumentCount(int count) {
     final operation = expression as Operation;
 
@@ -137,6 +148,6 @@ extension AnalysisContextErrorExt on AnalysisContext {
   }
 
   void unexpectedArgument(Expression argument) {
-    addError(UnexpectedArgument());
+    expressionContext(argument).addError(UnexpectedArgument());
   }
 }

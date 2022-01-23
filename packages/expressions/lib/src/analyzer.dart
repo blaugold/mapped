@@ -110,11 +110,13 @@ class ExpressionAnalyzerImpl
     Expression expression,
     AnalysisContext context,
   ) =>
-      _findSingleAnalysisDelegate<ExpressionTypeResolverDelegate>(expression)
-          .resolveExpressionType(
+      _findSingleOrNullAnalysisDelegate<ExpressionTypeResolverDelegate>(
+        expression,
+      )?.resolveExpressionType(
         expression,
         resolveExpressionContext(expression, context),
-      );
+      ) ??
+      unknownType;
 
   @protected
   AnalysisContext createRootContext() {
@@ -135,16 +137,13 @@ class ExpressionAnalyzerImpl
           .whereType<T>()
           .where((delegate) => delegate.canHandleExpression(expression));
 
-  T _findSingleAnalysisDelegate<T extends AnalysisDelegate>(
+  T? _findSingleOrNullAnalysisDelegate<T extends AnalysisDelegate>(
     Expression expression,
   ) {
     final delegates = _findAllAnalysisDelegates<T>(expression);
 
     if (delegates.isEmpty) {
-      throw StateError(
-        'Could not find an analysis delegate of type $T for expression '
-        '$expression.',
-      );
+      return null;
     }
 
     if (delegates.length > 1) {

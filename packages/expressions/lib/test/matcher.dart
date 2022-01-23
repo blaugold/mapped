@@ -1,5 +1,8 @@
-import 'package:expressions/expressions.dart';
+// ignore_for_file: depend_on_referenced_packages
+
 import 'package:test/test.dart';
+
+import '../expressions.dart';
 
 // === Expression ==============================================================
 
@@ -40,3 +43,15 @@ Matcher analysisErrorMessage(String message) =>
 
 Matcher analysisErrorMessages(Iterable<String> messages) =>
     containsAll(messages.map<Matcher>(analysisErrorMessage));
+
+TypeMatcher<AnalysisError> analysisErrorDescriptor(Object? matcher) =>
+    isAnalysisError.having((it) => it.descriptor, 'descriptor', matcher);
+
+final isIncompatibleExpressionType = isA<IncompatibleExpressionType>();
+
+final isUnexpectedArgument = isA<UnexpectedArgument>();
+
+TypeMatcher<TooFewArguments> isTooFewArguments({int? exact, int? minimum}) =>
+    isA<TooFewArguments>()
+        .having((it) => it.exactly, 'exact', exact ?? anything)
+        .having((it) => it.minimum, 'minimum', minimum ?? anything);

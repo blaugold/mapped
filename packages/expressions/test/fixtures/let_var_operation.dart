@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:expressions/expressions.dart';
+import 'package:expressions/test.dart';
 
-import '../utils/expression.dart';
 import 'type_system.dart';
 
 Expression let(String name, Object? value, Object? out) =>
@@ -15,11 +15,12 @@ final _variableNameChecker = regexLiteralStringChecker(
   stringType: stringType,
 );
 
-void letVarOperationDelegates(DelegateBuilder builder) => builder
+void letVarOperation<C>(DelegateBuilder<C> builder) => builder
+  ..registerOperation('let')
   ..staticOperationArgumentTypeChecker('let', [
     _variableNameChecker,
-    checkExpressionType(anyType),
-    checkExpressionType(anyType),
+    checkExpressionType(nullableValueType),
+    checkExpressionType(nullableValueType),
   ])
   ..operationTypeResolver(
     'let',
@@ -45,8 +46,9 @@ void letVarOperationDelegates(DelegateBuilder builder) => builder
   ..operationCompiler(
     'let',
     <R>(operation, context) =>
-        context.compiledExpression<Object?, R>(operation.arguments[2]),
+        context.compiledExpression<C, R>(operation.arguments[2]),
   )
+  ..registerOperation('var')
   ..staticOperationArgumentTypeChecker('var', [
     _variableNameChecker,
   ])
@@ -56,8 +58,8 @@ void letVarOperationDelegates(DelegateBuilder builder) => builder
   })
   ..operationCompiler(
     'var',
-    <R>(operation, context) => context
-        .compiledExpression<Object?, R>(operation.variableValue(context)!),
+    <R>(operation, context) =>
+        context.compiledExpression<C, R>(operation.variableValue(context)!),
   );
 
 class _VariableDefinition {

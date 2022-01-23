@@ -1,7 +1,6 @@
 import 'package:expressions/expressions.dart';
+import 'package:expressions/test.dart';
 import 'package:test/test.dart';
-
-import 'utils/matcher.dart';
 
 void main() {
   // TODO: test error handling

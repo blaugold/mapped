@@ -2,11 +2,13 @@ import 'package:expressions/expressions.dart';
 
 import 'type_system.dart';
 
-void literalDelegates(DelegateBuilder builder) => builder
+void testLiteral<C>(DelegateBuilder<C> builder) => builder
   ..literalTypeResolver((literal, context) {
     final value = literal.value;
     if (value is String) {
       return stringType;
+    } else if (value is bool) {
+      return booleanType;
     } else if (value is num) {
       return floatType;
     } else {
@@ -15,8 +17,8 @@ void literalDelegates(DelegateBuilder builder) => builder
   })
   ..literalChecker((literal, context) {
     final value = literal.value;
-    if (value is! String && value is! num) {
-      context.invalidLiteralValue('Not a string or number.');
+    if (value is! String && value is! num && value is! bool) {
+      context.invalidLiteralValue('Not a string, boolean or number.');
     }
   })
   ..literalCompiler(

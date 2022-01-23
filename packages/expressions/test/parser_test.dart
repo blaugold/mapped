@@ -1,9 +1,8 @@
 import 'dart:math';
 
 import 'package:expressions/src/expression_parser.dart';
+import 'package:expressions/test.dart';
 import 'package:test/test.dart';
-
-import 'utils/matcher.dart';
 
 void main() {
   final parser = ExpressionParser();
@@ -41,7 +40,6 @@ void main() {
       '0.01': literal(.01),
       '.010': literal(.01),
       '0.010': literal(.01),
-      '$pi': literal(pi),
       '1': literal(1),
       '01': literal(1),
       '1.0': literal(1),
@@ -50,6 +48,7 @@ void main() {
       '010': literal(10),
       '10.0': literal(10),
       '010.0': literal(10),
+      '$pi': literal(pi),
       'foo()': operation('foo'),
       'foo(true)': operation('foo', [true]),
       'foo(true )': operation('foo', [true]),

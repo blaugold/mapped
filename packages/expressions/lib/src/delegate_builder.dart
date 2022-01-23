@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 
 import 'analysis.dart';
 import 'analysis_context.dart';
+import 'analysis_error.dart';
 import 'compilation.dart';
 import 'expression.dart';
 import 'expression_checker.dart';
@@ -13,40 +14,6 @@ import 'optimization.dart';
 import 'utils.dart';
 
 typedef DelegateBuilderFn<T> = void Function(DelegateBuilder<T> builder);
-
-/// Builder for convenient creation of [AnalysisDelegate]s and
-/// [ExpressionCompilerDelegate]s.
-///
-/// [C] is the evaluation context for [ExpressionCompilerDelegate]s.
-class DelegateBuilder<C extends Object?> {
-  DelegateBuilder([Iterable<DelegateBuilderFn<C>>? builderFunctions]) {
-    if (builderFunctions != null) {
-      applyBuilderFunctions(builderFunctions);
-    }
-  }
-
-  List<AnalysisDelegate> get analysisDelegates =>
-      UnmodifiableListView(_analysisDelegates);
-  final List<AnalysisDelegate> _analysisDelegates = [];
-
-  List<ExpressionCompilerDelegate<C>> get compilerDelegates =>
-      UnmodifiableListView(_compilerDelegates);
-  final List<ExpressionCompilerDelegate<C>> _compilerDelegates = [];
-
-  void applyBuilderFunctions(Iterable<DelegateBuilderFn<C>> builderFunctions) {
-    for (final fn in builderFunctions) {
-      fn(this);
-    }
-  }
-
-  void addAnalysisDelegate(AnalysisDelegate delegate) {
-    _analysisDelegates.add(delegate);
-  }
-
-  void addCompilerDelegate(ExpressionCompilerDelegate<C> delegate) {
-    _compilerDelegates.add(delegate);
-  }
-}
 
 typedef OperationArgumentContextResolverFn = AnalysisContext Function(
   Operation operation,
@@ -84,7 +51,39 @@ typedef MapOperationCompilerFn<T, R> = CompiledExpression<C, R> Function<C>(
   AnalysisContext context,
 );
 
-extension DelegateBuilderExt<C> on DelegateBuilder<C> {
+/// Builder for convenient creation of [AnalysisDelegate]s and
+/// [ExpressionCompilerDelegate]s.
+///
+/// [C] is the evaluation context for [ExpressionCompilerDelegate]s.
+class DelegateBuilder<C extends Object?> {
+  DelegateBuilder([Iterable<DelegateBuilderFn<C>>? builderFunctions]) {
+    if (builderFunctions != null) {
+      applyBuilderFunctions(builderFunctions);
+    }
+  }
+
+  List<AnalysisDelegate> get analysisDelegates =>
+      [..._analysisDelegates, _knownOperationChecker()];
+  final List<AnalysisDelegate> _analysisDelegates = [];
+
+  List<ExpressionCompilerDelegate<C>> get compilerDelegates =>
+      UnmodifiableListView(_compilerDelegates);
+  final List<ExpressionCompilerDelegate<C>> _compilerDelegates = [];
+
+  void applyBuilderFunctions(Iterable<DelegateBuilderFn<C>> builderFunctions) {
+    for (final fn in builderFunctions) {
+      fn(this);
+    }
+  }
+
+  void addAnalysisDelegate(AnalysisDelegate delegate) {
+    _analysisDelegates.add(delegate);
+  }
+
+  void addCompilerDelegate(ExpressionCompilerDelegate<C> delegate) {
+    _compilerDelegates.add(delegate);
+  }
+
   // === Context resolvers =====================================================
 
   void operationArgumentContextResolver(
@@ -249,11 +248,41 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
 
   // === Operations ============================================================
 
+  final _operationNames = <String>{};
+
+  void registerOperation(String operationName) {
+    if (_operationNames.contains(operationName)) {
+      throw ArgumentError.value(
+        operationName,
+        'operationName',
+        'Operation "$operationName" is already registered.',
+      );
+    }
+
+    _operationNames.add(operationName);
+  }
+
+  AnalysisDelegate _knownOperationChecker() {
+    // Take a snapshot of the operation names to ensure that the we only check
+    // for operations, known at the time of this call.
+    final operationNames = {..._operationNames};
+
+    return FunctionalExpressionCheckerDelegate<Operation>(
+      anyExpression,
+      (operation, context) {
+        if (!operationNames.contains(operation.name)) {
+          context.unknownOperation();
+        }
+      },
+    );
+  }
+
   void constantOperation(
     String operationName,
     ExpressionType type,
     Object? value,
   ) {
+    registerOperation(operationName);
     staticOperationArgumentTypeChecker(operationName, []);
     staticOperationTypeResolver(operationName, type);
     addCompilerDelegate(
@@ -264,17 +293,39 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
     );
   }
 
-  void reduceOperation<T, R extends T>(
+  void contextLookupOperation<R>(
     String operationName,
     ExpressionType type,
+    R Function(C) lookup,
+  ) {
+    registerOperation(operationName);
+    operationArgumentChecker(
+      operationName,
+      (operation) => [],
+      const Range.zero(),
+    );
+    staticOperationTypeResolver(operationName, type);
+    operationCompiler(
+      operationName,
+      <RR>(operation, __) => assertRequiredType(
+        CompiledExpression<C, R>(lookup),
+      ),
+    );
+  }
+
+  void reduceOperation<T, R extends T>(
+    String operationName,
+    ExpressionType argumentType,
     Range argumentCount,
+    ExpressionType type,
     CombineOperationCompilerFn<T, R> compile,
   ) {
+    registerOperation(operationName);
     operationArgumentChecker(
       operationName,
       (_) => [
         OperationArgumentChecker(
-          checkExpressionType(type),
+          checkExpressionType(argumentType),
           repeats: argumentCount,
         )
       ],
@@ -286,13 +337,15 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
 
   void binaryReduceOperation<T, R extends T>(
     String operationName,
+    ExpressionType argumentType,
     ExpressionType type,
     R Function(T a, T b) compute,
   ) {
     reduceOperation<T, R>(
       operationName,
-      type,
+      argumentType,
       const Range.exact(2),
+      type,
       <C>(arguments, __) {
         final a = arguments[0];
         final b = arguments[1];
@@ -303,48 +356,60 @@ extension DelegateBuilderExt<C> on DelegateBuilder<C> {
 
   void mapOperation<T, R>(
     String operationName,
-    ExpressionType inputType,
-    ExpressionType outputType,
+    ExpressionType argumentType,
+    ExpressionType type,
     R Function(T value) compute,
   ) {
-    operationArgumentChecker(
+    _mapOperationBase<T, R>(
       operationName,
-      (_) => [OperationArgumentChecker(checkExpressionType(inputType))],
-      const Range.exact(1),
-    );
-    staticOperationTypeResolver(operationName, outputType);
-    mapOperationCompiler<T, R>(
-      operationName,
+      argumentType,
+      type,
       <C>(argument, __) => CompiledExpression((_) => compute(argument(_))),
     );
   }
 
-  void mapOperationWithContext<T, R>(
+  void mapOperationWithAnalysisContext<T, R>(
     String operationName,
-    ExpressionType inputType,
-    ExpressionType outputType,
+    ExpressionType argumentType,
+    ExpressionType type,
     R Function(T value, AnalysisContext context) compute,
   ) {
-    operationArgumentChecker(
+    _mapOperationBase<T, R>(
       operationName,
-      (_) => [OperationArgumentChecker(checkExpressionType(inputType))],
-      const Range.exact(1),
-    );
-    staticOperationTypeResolver(operationName, outputType);
-    mapOperationCompiler<T, R>(
-      operationName,
+      argumentType,
+      type,
       <C>(argument, context) =>
           CompiledExpression((_) => compute(argument(_), context)),
+    );
+  }
+
+  void _mapOperationBase<T, R>(
+    String operationName,
+    ExpressionType argumentType,
+    ExpressionType type,
+    MapOperationCompilerFn<T, R> compile,
+  ) {
+    registerOperation(operationName);
+    operationArgumentChecker(
+      operationName,
+      (_) => [OperationArgumentChecker(checkExpressionType(argumentType))],
+      const Range.exact(1),
+    );
+    staticOperationTypeResolver(operationName, type);
+    mapOperationCompiler<T, R>(
+      operationName,
+      compile,
     );
   }
 
   void concatOperation<T, R extends T>(
     String operationName,
     ExpressionType argumentsType,
-    ExpressionType type,
     Range argumentCount,
+    ExpressionType type,
     CombineOperationCompilerFn<T, R> compile,
   ) {
+    registerOperation(operationName);
     operationArgumentChecker(
       operationName,
       (_) => [

@@ -14,6 +14,7 @@ void decisionOperations(StyleExpressionDelegateBuilder builder) => builder
     'all',
     booleanType,
     const Range(2),
+    booleanType,
     <C>(arguments, _) {
       switch (arguments.length) {
         case 2:
@@ -207,6 +208,7 @@ void decisionOperations(StyleExpressionDelegateBuilder builder) => builder
     'any',
     booleanType,
     const Range(2),
+    booleanType,
     <C>(arguments, _) {
       switch (arguments.length) {
         case 2:
