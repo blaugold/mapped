@@ -5,7 +5,7 @@ abstract class AnalysisContext {
 
   const AnalysisContext._();
 
-  List<Object?> get elements;
+  Iterable<Object?> get elements;
 
   T firstOfType<T>() => elements.whereType<T>().first;
 
@@ -23,7 +23,7 @@ abstract class AnalysisContext {
     }
 
     if (other is AnalysisContext) {
-      return this + other.elements;
+      return this + other.elements.toList().reversed;
     }
 
     return _AnalysisContextElement(this, other);
@@ -38,12 +38,15 @@ class _AnalysisContextRoot extends AnalysisContext {
 }
 
 class _AnalysisContextElement extends AnalysisContext {
-  _AnalysisContextElement(this.parent, this.element) : super._();
+  _AnalysisContextElement(this._previous, this._element) : super._();
 
-  final AnalysisContext parent;
+  final AnalysisContext _previous;
 
-  final Object? element;
+  final Object? _element;
 
   @override
-  late final List<Object?> elements = [...parent.elements, element];
+  Iterable<Object?> get elements sync* {
+    yield _element;
+    yield* _previous.elements;
+  }
 }

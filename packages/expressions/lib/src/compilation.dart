@@ -2,13 +2,31 @@ import 'analysis.dart';
 import 'analysis_context.dart';
 import 'expression.dart';
 
-extension AnalysisContextCompilationExt<C> on AnalysisContext {
-  CompiledExpression<C, R> compiledExpression<R>(Expression expression) =>
+extension AnalysisContextCompilationExt on AnalysisContext {
+  CompiledExpression<C, R> compiledExpression<C, R>(Expression expression) =>
       firstOfType<CompiledExpressionResolver<C>>()
           .resolveCompiledExpression(expression, this);
 }
 
-typedef CompiledExpression<C, R> = R Function(C context);
+typedef CompiledExpressionFn<C, R> = R Function(C context);
+
+class CompiledExpression<C, R> {
+  CompiledExpression(this.fn);
+
+  final CompiledExpressionFn<C, R> fn;
+
+  @pragma('vm:prefer-inline')
+  R call(C context) => fn(context);
+}
+
+class ConstantCompiledExpression<C, R> extends CompiledExpression<C, R> {
+  ConstantCompiledExpression(this.value) : super((_) => value);
+
+  ConstantCompiledExpression<Object?, R> withNullableContext() =>
+      ConstantCompiledExpression<Object?, R>(value);
+
+  final R value;
+}
 
 abstract class CompiledExpressionResolver<C> {
   CompiledExpression<C, R> resolveCompiledExpression<R>(

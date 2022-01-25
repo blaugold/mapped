@@ -10,10 +10,17 @@ import 'expression_type.dart';
 abstract class ExpressionAnalyzer {
   factory ExpressionAnalyzer({
     required List<AnalysisDelegate> analysisDelegates,
+    List<Object>? context,
   }) = ExpressionAnalyzerImpl;
 
-  factory ExpressionAnalyzer.fromDelegateBuilder(DelegateBuilder builder) =>
-      ExpressionAnalyzer(analysisDelegates: builder.analysisDelegates);
+  factory ExpressionAnalyzer.fromDelegateBuilder(
+    DelegateBuilder builder, {
+    List<Object>? context,
+  }) =>
+      ExpressionAnalyzer(
+        analysisDelegates: builder.analysisDelegates,
+        context: context,
+      );
 
   List<AnalysisError> checkExpression(Expression expression);
 
@@ -27,56 +34,25 @@ class ExpressionAnalyzerImpl
         ExpressionContextResolver {
   ExpressionAnalyzerImpl({
     required this.analysisDelegates,
+    this.context,
   });
 
   final List<AnalysisDelegate> analysisDelegates;
 
+  final List<Object>? context;
+
   @override
   List<AnalysisError> checkExpression(Expression expression) {
-    void checkExpression(Expression expression, AnalysisContext context) {
-      final checkers =
-          _findAllAnalysisDelegates<ExpressionCheckerDelegate>(expression);
-
-      for (final checker in checkers) {
-        checker.checkExpression(expression, context);
-      }
-
-      if (expression is Operation) {
-        for (final argument in expression.arguments) {
-          checkExpression(argument, context.expressionContext(argument));
-        }
-      }
-
-      if (expression is ExpressionsObject) {
-        for (final propertyValue in expression.fields.values) {
-          checkExpression(
-            propertyValue,
-            context.expressionContext(propertyValue),
-          );
-        }
-      }
-    }
-
-    final context = createRootContext(expression);
-
-    checkExpression(expression, context);
-
+    final context = createRootContext();
+    _checkExpression(expression, resolveExpressionContext(expression, context));
     return context.analysisErrors.errors;
   }
 
   @override
   ExpressionType getExpressionType(Expression expression) =>
-      resolveExpressionType(expression, createRootContext(expression));
-
-  @override
-  ExpressionType resolveExpressionType(
-    Expression expression,
-    AnalysisContext context,
-  ) =>
-      _findSingleAnalysisDelegate<ExpressionTypeResolverDelegate>(expression)
-          .resolveExpressionType(
+      resolveExpressionType(
         expression,
-        resolveExpressionContext(expression, context),
+        resolveExpressionContext(expression, createRootContext()),
       );
 
   @override
@@ -98,19 +74,59 @@ class ExpressionAnalyzerImpl
         );
 
         for (final resolver in contextResolvers) {
-          expressionContext +=
+          expressionContext =
               resolver.resolveExpressionContext(expression, expressionContext);
         }
 
         return expressionContext;
       });
 
+  void _checkExpression(Expression expression, AnalysisContext context) {
+    final checkers =
+        _findAllAnalysisDelegates<ExpressionCheckerDelegate>(expression);
+
+    for (final checker in checkers) {
+      checker.checkExpression(expression, context);
+    }
+
+    if (expression is Operation) {
+      for (final argument in expression.arguments) {
+        _checkExpression(argument, context.expressionContext(argument));
+      }
+    }
+
+    if (expression is ExpressionsObject) {
+      for (final propertyValue in expression.fields.values) {
+        _checkExpression(
+          propertyValue,
+          context.expressionContext(propertyValue),
+        );
+      }
+    }
+  }
+
+  @override
+  ExpressionType resolveExpressionType(
+    Expression expression,
+    AnalysisContext context,
+  ) =>
+      _findSingleOrNullAnalysisDelegate<ExpressionTypeResolverDelegate>(
+        expression,
+      )?.resolveExpressionType(
+        expression,
+        resolveExpressionContext(expression, context),
+      ) ??
+      unknownType;
+
   @protected
-  AnalysisContext createRootContext(Expression expression) {
+  AnalysisContext createRootContext() {
     var context = AnalysisContext();
     context += this;
     context += _ExpressionContexts();
-    context += expression;
+    context += AnalysisErrors();
+    for (final element in this.context ?? <Object?>[]) {
+      context += element;
+    }
     return context;
   }
 
@@ -121,16 +137,13 @@ class ExpressionAnalyzerImpl
           .whereType<T>()
           .where((delegate) => delegate.canHandleExpression(expression));
 
-  T _findSingleAnalysisDelegate<T extends AnalysisDelegate>(
+  T? _findSingleOrNullAnalysisDelegate<T extends AnalysisDelegate>(
     Expression expression,
   ) {
     final delegates = _findAllAnalysisDelegates<T>(expression);
 
     if (delegates.isEmpty) {
-      throw StateError(
-        'Could not find an analysis delegate of type $T for expression '
-        '$expression.',
-      );
+      return null;
     }
 
     if (delegates.length > 1) {
